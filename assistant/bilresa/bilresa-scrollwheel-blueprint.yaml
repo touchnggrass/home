@@ -102,8 +102,8 @@ blueprint:
           filter:
             - domain: media_player
     
-    brightness_step:
-      name: Brightness Step
+    percent_step:
+      name: Percent Step
       description: Percentage to increase/decrease brightness per button press
       default: 10
       selector:
@@ -251,7 +251,7 @@ action:
       warm_temp: !input temp_warm
       neutral_temp: !input temp_neutral
       cool_temp: !input temp_cool
-      step_pct: !input brightness_step
+      step_pct: !input percent_step
       trans_time: !input transition_time
       target_light: >
         {% if trigger.id in ['btn1', 'btn2', 'btn3'] %}

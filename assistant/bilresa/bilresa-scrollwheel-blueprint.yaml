@@ -7,8 +7,8 @@ blueprint:
     - 2 light groups and 1 media player group (9 buttons total)
     - Light groups: left/right buttons dim up/down; middle toggles on/off
     - Light groups: middle long press cycles color temperature
-    - Media group: left/right buttons control volume; middle toggles mute
-    - Media group: middle long press toggles play/pause
+    - Media group: left/right buttons control volume; middle toggles play/pause
+    - Media group: middle long press toggles mute
     
     **Button Layout:**
     - Buttons 1-3: Group 1
@@ -299,14 +299,14 @@ action:
               entity_id: "{{ group3_media_player }}"
       - conditions:
           - condition: template
-            value_template: "{{ trigger.id == 'btn9' and is_long }}"
+            value_template: "{{ trigger.id == 'btn9' and not is_long }}"
         sequence:
           - action: media_player.media_play_pause
             target:
               entity_id: "{{ group3_media_player }}"
       - conditions:
           - condition: template
-            value_template: "{{ trigger.id == 'btn9' and not is_long }}"
+            value_template: "{{ trigger.id == 'btn9' and is_long }}"
         sequence:
           - action: media_player.volume_mute
             target:

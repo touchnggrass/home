@@ -1,0 +1,109 @@
+blueprint:
+  name: Light Color Cycle
+  description: >-
+    Repeatedly cycle a light through a list of colors. Each list item must be a
+    light.turn_on color option, such as color_name, rgb_color, hs_color,
+    xy_color, or color_temp_kelvin. When turned off, the script briefly applies
+    a configured color temperature, turns the light off again, and stops.
+  domain: script
+  input:
+    target_light:
+      name: Target light
+      selector:
+        entity:
+          filter:
+            - domain: light
+    interval_seconds:
+      name: Seconds per color
+      description: Time to hold each color before moving to the next.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 3600
+          step: 1
+          unit_of_measurement: seconds
+    transition_seconds:
+      name: Transition duration
+      description: Time taken to fade from the current color to the next.
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 1
+          unit_of_measurement: seconds
+    off_color_temp_kelvin:
+      name: Color temperature on stop
+      description: Applied once when the light is turned off; the light is then turned off again.
+      default: 3000
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          unit_of_measurement: K
+    colors:
+      name: Colors
+      description: >-
+        A list of light.turn_on color options. Each item should contain one
+        supported key, for example color_name: tomato or rgb_color: [255, 0, 0].
+      default:
+        - color_name: tomato
+        - rgb_color: [0, 128, 255]
+        - hs_color: [120, 100]
+        - xy_color: [0.3, 0.3]
+        - color_temp_kelvin: 3500
+      selector:
+        object:
+
+variables:
+  light_entity: !input target_light
+  interval_seconds: !input interval_seconds
+  transition_time: !input transition_seconds
+  interval_timeout: >-
+    {{ '%02d:%02d:%02d' | format((interval_seconds | int) // 3600,
+       ((interval_seconds | int) % 3600) // 60,
+       (interval_seconds | int) % 60) }}
+
+sequence:
+  - action: light.turn_on
+    target:
+      entity_id: !input target_light
+  - wait_template: "{{ is_state(light_entity, 'on') }}"
+    timeout: "00:00:10"
+    continue_on_timeout: false
+  - repeat:
+      while:
+        - condition: template
+          value_template: "{{ is_state(light_entity, 'on') }}"
+      sequence:
+        - repeat:
+            for_each: !input colors
+            sequence:
+              - condition: template
+                value_template: "{{ is_state(light_entity, 'on') }}"
+              - action: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data: "{{ repeat.item | combine({'transition': transition_time | int}) }}"
+              - wait_template: "{{ not is_state(light_entity, 'on') }}"
+                timeout: "{{ interval_timeout }}"
+                continue_on_timeout: true
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_state(light_entity, 'off') }}"
+                    sequence:
+                      - action: light.turn_on
+                        target:
+                          entity_id: !input target_light
+                        data:
+                          color_temp_kelvin: !input off_color_temp_kelvin
+                          transition: 0
+                      - action: light.turn_off
+                        target:
+                          entity_id: !input target_light
+                      - stop: "Applied the configured color temperature and stopped the cycle."
+
+mode: single

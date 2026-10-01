@@ -1,24 +1,25 @@
 blueprint:
-  name: IKEA Bilresa (Remote with scroll) - Smart Light Control
+  name: IKEA Bilresa (Remote with scroll) - Light and Media Control
   description: |
-    Control your lights with the IKEA Bilresa(Remote with scroll) via Matter.
+    Control lights and a media player with the IKEA Bilresa (Remote with scroll) via Matter.
     
     **Features:**
-    - 3 independent groups (9 buttons total)
-    - Left/Right buttons: dim up/down
-    - Middle button: toggle on/off
-    - Middle button long press: cycle color temperature (warm → neutral → cool)
+    - 2 light groups and 1 media player group (9 buttons total)
+    - Light groups: left/right buttons dim up/down; middle toggles on/off
+    - Light groups: middle long press cycles color temperature
+    - Media group: left/right buttons control volume; middle toggles mute
+    - Media group: middle long press toggles play/pause
     
     **Button Layout:**
     - Buttons 1-3: Group 1
     - Buttons 4-6: Group 2  
-    - Buttons 7-9: Group 3
+    - Buttons 7-9: Media player group
     
     Select corresponding button ID (1-9) for each button input.
     Button 1 = button 1 for correct remote, button 2 = button 2, etc.
 
 
-    Group 1 Light: The first light/output you want to control with first group of buttons. Scroll, on/off, longhold for changing color temp.
+    Group 1 Light: The first light/output you want to control with first group of buttons. Scroll, on/off, long hold for changing color temp.
     And so on.
 
     Brightness Step for how much each scroll step should change brightness (in percent).
@@ -101,13 +102,13 @@ blueprint:
           filter:
             - domain: light
     
-    group3_light:
-      name: Group 3 Light (Buttons 7-9)
-      description: Light(s) controlled by buttons 7-9
+    group3_media_player:
+      name: Group 3 Media Player (Buttons 7-9)
+      description: Media player controlled by buttons 7-9
       selector:
         entity:
           filter:
-            - domain: light
+            - domain: media_player
     
     brightness_step:
       name: Brightness Step
@@ -254,7 +255,7 @@ action:
   - variables:
       group1: !input group1_light
       group2: !input group2_light
-      group3: !input group3_light
+      group3_media_player: !input group3_media_player
       warm_temp: !input temp_warm
       neutral_temp: !input temp_neutral
       cool_temp: !input temp_cool
@@ -263,10 +264,8 @@ action:
       target_light: >
         {% if trigger.id in ['btn1', 'btn2', 'btn3'] %}
           {{ group1 }}
-        {% elif trigger.id in ['btn4', 'btn5', 'btn6'] %}
-          {{ group2 }}
         {% else %}
-          {{ group3 }}
+          {{ group2 }}
         {% endif %}
       is_long: "{{ trigger.to_state.attributes.event_type == 'long_press' }}"
   
@@ -284,10 +283,40 @@ action:
          and (now() - (trigger.to_state.state | as_datetime | as_local)).total_seconds() < 5 }}
   
   - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn7' }}"
+        sequence:
+          - action: media_player.volume_up
+            target:
+              entity_id: "{{ group3_media_player }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn8' }}"
+        sequence:
+          - action: media_player.volume_down
+            target:
+              entity_id: "{{ group3_media_player }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn9' and is_long }}"
+        sequence:
+          - action: media_player.media_play_pause
+            target:
+              entity_id: "{{ group3_media_player }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn9' and not is_long }}"
+        sequence:
+          - action: media_player.volume_mute
+            target:
+              entity_id: "{{ group3_media_player }}"
+            data:
+              is_volume_muted: "{{ not (state_attr(group3_media_player, 'is_volume_muted') | default(false, true)) }}"
       # Long press for color temperature cycling
       - conditions:
           - condition: template
-            value_template: "{{ is_long and trigger.id in ['btn3', 'btn6', 'btn9'] }}"
+            value_template: "{{ is_long and trigger.id in ['btn3', 'btn6'] }}"
         sequence:
           - action: light.turn_on
             target:
@@ -308,14 +337,14 @@ action:
       # Single press toggle (default behavior)
       - conditions:
           - condition: template
-            value_template: "{{ trigger.id in ['btn3', 'btn6', 'btn9'] and not is_long }}"
+            value_template: "{{ trigger.id in ['btn3', 'btn6'] and not is_long }}"
         sequence:
           - action: light.toggle
             target:
               entity_id: "{{ target_light }}"
       - conditions:
           - condition: template
-            value_template: "{{ trigger.id in ['btn1', 'btn4', 'btn7'] }}"
+            value_template: "{{ trigger.id in ['btn1', 'btn4'] }}"
         sequence:
           - action: light.turn_on
             target:
@@ -325,7 +354,7 @@ action:
               transition: "{{ trans_time }}"
       - conditions:
           - condition: template
-            value_template: "{{ trigger.id in ['btn2', 'btn5', 'btn8'] }}"
+            value_template: "{{ trigger.id in ['btn2', 'btn5'] }}"
         sequence:
           - action: light.turn_on
             target:

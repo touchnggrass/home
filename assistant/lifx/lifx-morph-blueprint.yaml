@@ -1,0 +1,43 @@
+blueprint:
+  name: "LIFX Morph Palette Script"
+  description: "Runs a custom LIFX morph effect using a configurable color palette (2-16 colors)."
+  domain: script
+  input:
+    target_light:
+      name: Target LIFX Light
+      description: Choose the LIFX entity for the morph effect.
+      selector:
+        entity:
+          domain: light
+    morph_speed:
+      name: Speed
+      description: How fast the colors move (1 to 25 seconds).
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 25
+          step: 1
+    color_palette:
+      name: Color Palette
+      description: Provide a custom list of 2 to 16 colors. Format each as [hue, saturation, brightness, kelvin].
+      default:
+        - [0, 100, 50, 3500]
+        - [120, 100, 50, 3500]
+      selector:
+        object:
+
+variables:
+  # Map the raw selector input into a local variable
+  light_entity: !input target_light
+
+sequence:
+  - alias: "{{ device_name(light_entity) }} effect: move"
+    action: lifx.effect_morph
+    target:
+      entity_id: "{{ light_entity }}"
+      device_id: "{{ device_id(light_entity) }}"
+    data:
+      speed: !input morph_speed
+      power_on: true
+      palette: !input color_palette

@@ -6,10 +6,9 @@ blueprint:
     **Features:**
     - Buttons 1-6 control two independent light groups
     - For each light group, left/right buttons dim up/down and the middle button toggles on/off
-    - Long-press the middle button in either light group to cycle color temperature
+    - Short-press the middle button in either light group to cycle color temperature
     
-    - Buttons 7-9 control one media player: button 7 raises volume, button 8 lowers volume
-    - Button 9 short press toggles play/pause; long press toggles mute
+    - Buttons 7-9 control one media player: button 7 raises volume, button 8 lowers volume, and button 9 short press toggles play/pause; long press toggles mute
     
     **Button Layout:**
     - Buttons 1-3: Group 1 light (dim up, dim down, toggle/color temperature)
@@ -18,7 +17,7 @@ blueprint:
     
     Assign the matching event entity to each Button 1-9 input. Find these under Developer Tools → States; they are named like "event.your_remote_name_button_1" through "button_9".
 
-    Choose one light for each light group and one media player for Group 3. Brightness Step controls the light dimming increment, Transition Time sets the light fade duration, and the color temperature inputs set the warm, neutral, and cool Kelvin values.
+    Choose one light for each light group and one media player for Group 3. Brightness Step controls the light dimming increment. Transition Time sets the light fade duration, and the color temperature inputs set the warm, neutral, and cool Kelvin values.
     
   domain: automation
   
@@ -105,14 +104,14 @@ blueprint:
     percent_step:
       name: Percent Step
       description: Percentage to increase/decrease brightness per button press
-      default: 10
+      default: 5
       selector:
         number:
           min: 5
           max: 25
           step: 5
           unit_of_measurement: "%"
-    
+
     transition_time:
       name: Transition Time
       description: Smooth transition duration for brightness changes
@@ -121,7 +120,7 @@ blueprint:
         number:
           min: 0
           max: 5
-          step: 1
+          step: .1
           unit_of_measurement: "s"
     
     temp_warm:
@@ -298,22 +297,14 @@ action:
               entity_id: "{{ group3_media_player }}"
       - conditions:
           - condition: template
-            value_template: "{{ trigger.id == 'btn9' and is_long }}"
-        sequence:
-          - action: media_player.volume_mute
-            target:
-              entity_id: "{{ group3_media_player }}"
-            data:
-              is_volume_muted: "{{ not (state_attr(group3_media_player, 'is_volume_muted') | default(false, true)) }}"
-      # Long press for color temperature cycling
-      - conditions:
-          - condition: template
-            value_template: "{{ is_long and trigger.id in ['btn3', 'btn6'] }}"
+            value_template: "{{ trigger.id in ['btn3', 'btn6'] and not is_long }}"
         sequence:
           - action: light.turn_on
             target:
               entity_id: "{{ target_light }}"
             data:
+              brightness: >
+                {{ state_attr(target_light, 'brightness') | default(255) }}
               color_temp_kelvin: >
                 {% set current = state_attr(target_light, 'color_temp_kelvin') | int(0) %}
                 {% set mid_warm_neutral = (warm_temp + neutral_temp) / 2 %}
@@ -325,11 +316,12 @@ action:
                 {% else %}
                   {{ warm_temp }}
                 {% endif %}
+              transition: "{{ trans_time }}"
       
-      # Single press toggle (default behavior)
+      # Long press toggle (default behavior)
       - conditions:
           - condition: template
-            value_template: "{{ trigger.id in ['btn3', 'btn6'] and not is_long }}"
+            value_template: "{{ is_long and trigger.id in ['btn3', 'btn6'] }}"
         sequence:
           - action: light.toggle
             target:

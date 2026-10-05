@@ -103,7 +103,7 @@ blueprint:
     
     percent_step:
       name: Percent Step
-      description: Percentage to increase/decrease brightness per button press
+      description: Percentage to increase/decrease % per button press
       default: 5
       selector:
         number:
@@ -126,7 +126,7 @@ blueprint:
     temp_warm:
       name: Warm Color Temperature
       description: Warm white color temperature in Kelvin
-      default: 2700
+      default: 3000
       selector:
         number:
           min: 2000
@@ -137,7 +137,7 @@ blueprint:
     temp_neutral:
       name: Neutral Color Temperature
       description: Neutral white color temperature in Kelvin
-      default: 4000
+      default: 3500
       selector:
         number:
           min: 3500
@@ -148,7 +148,7 @@ blueprint:
     temp_cool:
       name: Cool Color Temperature
       description: Cool white color temperature in Kelvin
-      default: 6000
+      default: 5000
       selector:
         number:
           min: 5000

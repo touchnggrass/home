@@ -3,8 +3,8 @@ blueprint:
   description: >-
     Repeatedly cycle a light through a list of colors. Each list item must be a
     light.turn_on color option, such as color_name, rgb_color, hs_color,
-    xy_color, or color_temp_kelvin. When turned off, the script briefly applies
-    a configured color temperature, turns the light off again, and stops.
+    xy_color, or color_temp_kelvin. When turned off, the script stops and
+    leaves the light off.
   domain: script
   input:
     target_light:
@@ -16,7 +16,7 @@ blueprint:
     interval_seconds:
       name: Seconds per color
       description: Time to hold each color before moving to the next.
-      default: 5
+      default: 3
       selector:
         number:
           min: 1
@@ -26,23 +26,13 @@ blueprint:
     transition_seconds:
       name: Transition duration
       description: Time taken to fade from the current color to the next.
-      default: 1
+      default: 2
       selector:
         number:
           min: 0
           max: 30
-          step: 1
+          step: .1
           unit_of_measurement: seconds
-    off_color_temp_kelvin:
-      name: Color temperature on stop
-      description: Applied once when the light is turned off; the light is then turned off again.
-      default: 3000
-      selector:
-        number:
-          min: 2000
-          max: 6500
-          step: 100
-          unit_of_measurement: K
     colors:
       name: Colors
       description: >-
@@ -87,23 +77,17 @@ sequence:
                 target:
                   entity_id: !input target_light
                 data: "{{ repeat.item | combine({'transition': transition_time | int}) }}"
-              - wait_template: "{{ not is_state(light_entity, 'on') }}"
+              - wait_template: "{{ is_state(light_entity, 'off') }}"
                 timeout: "{{ interval_timeout }}"
                 continue_on_timeout: true
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ is_state(light_entity, 'off') }}"
+                        value_template: "{{ wait.completed }}"
                     sequence:
-                      - action: light.turn_on
-                        target:
-                          entity_id: !input target_light
-                        data:
-                          color_temp_kelvin: !input off_color_temp_kelvin
-                          transition: 0
                       - action: light.turn_off
                         target:
                           entity_id: !input target_light
-                      - stop: "Applied the configured color temperature and stopped the cycle."
+                      - stop: "Light switched off; stopped the color cycle."
 
 mode: single
